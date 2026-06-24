@@ -7,4 +7,5 @@ Download a single HTML file, open it in your browser, redact sensitive informati
 - No uploads
 - No accounts
 - No analytics
+- No AI
 - Open source
