@@ -1,11 +1,4 @@
 # Offline PDF Redactor
-A minimalist browser based offline PDF redactor. 
+A minimalist browser based single-file PDF redactor that audits its own ouput.
 
-Download a single HTML file, open it in your browser, redact sensitive information, and export a sanitized PDF.
 
-- No installation
-- No uploads
-- No accounts
-- No analytics
-- No AI
-- Open source
