@@ -19,6 +19,8 @@ This app  applies true destructive flattening (Rasterization). Instead of just o
 
 Because the output is just a picture of the redacted page, there is no underlying text metadata to exploit.
 
+<br>
+
 ## Self Verification
 
 The app programmatically audits its own output right after generation. It immediately re-parses the redacted file with pdf.js to ensure the character count is exactly zero. In other words, it performs a Ctrl + F search to ensure that no text is extractable.
@@ -29,6 +31,16 @@ Simply download the project folder and place it on your desktop. Then double cli
 ## How to manually verify that redacted text has been burned out
 
 
+
+<br>
+
+## Revision History
+
+Version 1.0<br>
+27-June-2026<br>
+First release.
+
+<br>
 
 
 
