@@ -1,8 +1,7 @@
 # Offline PDF Redactor
-A minimalist browser based PDF redactor that audits its own ouput.
+A minimalist browser based PDF redactor.
 
 - Offline-first and privacy-first web app.
-- Checks the exported redacted file to ensure security.
 - No installation needed. Simply download and double-click the index.html file to launch from your desktop. The app will open in your browser. 
 - Simple UI that's designed to reduce cognitive load.
 - No Monetization/Dark Patterns - no advertisements, cookies, hidden tracking pixels, premium upgrades, or sign-up walls.
@@ -34,7 +33,9 @@ Because the output is just a picture of the redacted page, there is no underlyin
 
 ## Self Verification
 
-The app programmatically audits its own output right after generation. It immediately re-parses the redacted file with pdf.js to ensure the character count is exactly zero. In other words, it performs a copy-paste to ensure that no text is extractable.
+Instead of just trusting that the export worked, the app takes the exact PDF blob it just created, re-opens it independently using pdfjsLib.getDocument() (the same library used to load PDFs in the first place), and runs PDF.js's text-extraction (getTextContent()) across every page of that freshly re-parsed file.
+
+It counts every character of extractable text found (finalChars). Because each page was exported as a rasterized JPEG image rather than real text/vector content, a properly redacted file should have zero extractable characters — there's no text layer left at all, just pixels.
 
 ## How to use ofline
 Simply download the project folder and place it on your desktop. Then double click the index.html file. The app will open in your browser.
@@ -51,7 +52,7 @@ Simply download the project folder and place it on your desktop. Then double cli
 <br>
 
 ## Notes
-- The rasterized PDF pages can look a little blurry, but the resolution of the exported file can be manually set.
+- The rasterized PDF pages that you see in the editor can look a little blurry, but the resolution of the exported file can be manually set.
 - Before starting redaction it's a good idea to do a test export to ensure that you are happy with the quality and the file size, because the exported file size will be much larger that your original pdf.
 
 <br>
