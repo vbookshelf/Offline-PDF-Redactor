@@ -1,8 +1,9 @@
 # Offline PDF Redactor
-A minimalist browser based PDF redactor.
+A minimalist local browser based PDF redactor.
 
 - Offline-first and privacy-first web app.
-- No installation needed. Simply download and double-click the index.html file to launch from your desktop. The app will open in your browser. 
+- Runs completely offline. All processing is done locally, in the browser.
+- No installation needed. Simply double-click the index.html file to launch from your desktop. The app will open in your browser. 
 - Simple UI that's designed to reduce cognitive load.
 - No Monetization/Dark Patterns - no advertisements, cookies, hidden tracking pixels, premium upgrades, or sign-up walls.
 - Free and open source.
