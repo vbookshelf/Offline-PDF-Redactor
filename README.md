@@ -63,7 +63,7 @@ Simply download the project folder and place it on your desktop. Then double cli
 ## Revision History
 
 Version 1.0<br>
-26-June-2026<br>
+27-June-2026<br>
 First release.
 
 <br>
