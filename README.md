@@ -34,7 +34,7 @@ Because the output is just a picture of the redacted page, there is no underlyin
 
 ## Self Verification
 
-The app programmatically audits its own output right after generation. It immediately re-parses the redacted file with pdf.js to ensure the character count is exactly zero. In other words, it performs a Ctrl + F search to ensure that no text is extractable.
+The app programmatically audits its own output right after generation. It immediately re-parses the redacted file with pdf.js to ensure the character count is exactly zero. In other words, it performs a copy-paste to ensure that no text is extractable.
 
 ## How to use ofline
 Simply download the project folder and place it on your desktop. Then double click the index.html file. The app will open in your browser.
