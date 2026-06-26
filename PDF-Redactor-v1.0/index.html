@@ -1,0 +1,1032 @@
+<!--
+# Offline PDF Redactor
+# GitHub: https://github.com/vbookshelf/Offline-PDF-Redactor
+# License: MIT (You are free to share this app with others.)
+# Version: 1.0
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF Redactor</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><rect x=%224%22 y=%222%22 width=%2216%22 height=%2220%22 rx=%222%22 fill=%22white%22 stroke=%22black%22 stroke-width=%221.5%22/><rect x=%226%22 y=%2210%22 width=%2212%22 height=%224%22 fill=%22black%22/></svg>">
+<script src="vendor/pdf.min.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --panel: #ffffff;
+    --ink: #1c1c1c;
+    --muted: #6b6b6b;
+    --line: #e2e2df;
+    --line-strong: #95958f;
+    --good: #166b30;
+    --bad: #c62828;
+    --accent: #2554c7;
+
+    --button-hover-bg: #f0f0ee;
+    --button-primary-hover-bg: #000000;
+    --primary-bg: #1c1c1c;
+    --primary-fg: #ffffff;
+    --undo-active-bg: #f0f4fd;
+    --undo-active-hover-bg: #dde7fb;
+    --verdict-pass-bg: #eaf6ec;
+    --verdict-fail-bg: #fdecea;
+    --option-hover-bg: #fafaf9;
+    --option-selected-bg: #f5f5f3;
+    --dropzone-border: #c4c4c0;
+    --dropzone-hover-bg: #fafbff;
+  }
+
+  /* Dark theme dims the surrounding chrome (sidebar, backgrounds, borders,
+     hover states) only. It deliberately does NOT touch the rendered PDF
+     page canvases themselves -- those stay true white with black text/
+     redaction boxes so what you see always matches the real document and
+     what will end up in the exported file. */
+  html[data-theme="dark"] {
+    --bg: #1b1c1d;
+    --panel: #242526;
+    --ink: #e8e8e6;
+    --muted: #a3a3a1;
+    --line: #38393a;
+    --line-strong: #55565a;
+    --good: #4fbf76;
+    --bad: #ef5350;
+    --accent: #6e9eff;
+
+    --button-hover-bg: #2e2f30;
+    --button-primary-hover-bg: #d0d0ce;
+    --primary-bg: #e8e8e6;
+    --primary-fg: #15161a;
+    --undo-active-bg: #1f2a3d;
+    --undo-active-hover-bg: #28365072;
+    --verdict-pass-bg: #1c3324;
+    --verdict-fail-bg: #3a2020;
+    --option-hover-bg: #2a2b2c;
+    --option-selected-bg: #2f3032;
+    --dropzone-border: #4a4b4c;
+    --dropzone-hover-bg: #202533;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  input[type=file] { display: none; }
+  button {
+    font: inherit; font-size: 14px; font-weight: 500;
+    padding: 9px 14px; border-radius: 7px; width: 100%;
+    border: 1px solid var(--line-strong); background: var(--panel); color: var(--ink);
+    cursor: pointer;
+  }
+  button:hover { background: var(--button-hover-bg); }
+  button.primary { background: var(--primary-bg); color: var(--primary-fg); border-color: var(--primary-bg); }
+  button.primary:hover { background: var(--button-primary-hover-bg); }
+  button.danger-step { background: #c62828; color: #fff; border-color: #c62828; }
+  button.danger-step:hover { background: #a82121; }
+  button:disabled { opacity: 0.55; cursor: not-allowed; }
+  button:focus-visible,
+  input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .layout {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar {
+    width: 360px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--line);
+    background: var(--panel);
+    overflow-y: auto;
+    padding: 24px 20px 40px;
+  }
+  .sidebar-header {
+    margin-bottom: 22px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .sidebar-header-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .sidebar-header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .sidebar-header p {
+    margin: 6px 0 10px;
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.45;
+  }
+  .github-link a {
+    font-size: 14px;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .github-link a:hover {
+    text-decoration: none;
+  }
+
+  #themeToggle {
+    width: auto;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    padding: 6px; border-radius: 7px;
+    border: 1px solid var(--line-strong);
+    background: var(--panel);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  #themeToggle:hover { background: var(--button-hover-bg); }
+  #themeToggle svg { width: 17px; height: 17px; display: block; }
+  #themeToggle .icon-sun { display: none; }
+  html[data-theme="dark"] #themeToggle .icon-moon { display: none; }
+  html[data-theme="dark"] #themeToggle .icon-sun { display: block; }
+
+  .step-card {
+    border: 1px solid var(--line-strong); border-radius: 10px;
+    padding: 14px 14px 16px; margin-bottom: 14px;
+  }
+  .step-card .step-num {
+    display: inline-block; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--primary-bg); color: var(--primary-fg); font-size: 11px; font-weight: 700;
+    text-align: center; line-height: 20px; margin-right: 8px;
+  }
+  .step-card.done .step-num { background: var(--good); color: #fff; }
+  .step-card h3 { display: inline; font-size: 13px; margin: 0; vertical-align: middle; }
+  .step-card p { font-size: 12.5px; color: var(--muted); margin: 8px 0 12px; line-height: 1.45; }
+
+  #undoRow { margin-bottom: 14px; }
+  #undoRow button { background: var(--panel); }
+  #undoBtn {
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+  }
+  #undoBtn svg { width: 16px; height: 16px; flex-shrink: 0; }
+  #undoBtn:not(:disabled) {
+    border-color: var(--line-strong); color: var(--accent); background: var(--undo-active-bg);
+  }
+  #undoBtn:not(:disabled):hover { background: var(--undo-active-hover-bg); }
+
+  #pageJumpRow { margin-bottom: 14px; }
+  #pageJumpInput {
+    font: inherit; font-size: 14px; font-weight: 500;
+    padding: 9px 14px; border-radius: 7px; width: 100%;
+    border: 1px solid var(--line-strong); background: var(--panel); color: var(--ink);
+    box-sizing: border-box;
+  }
+  #pageJumpInput:disabled { opacity: 0.55; cursor: not-allowed; }
+  #pageJumpInput::placeholder { color: var(--muted); }
+  #pageJumpInput:focus { outline: none; border-color: var(--line-strong); }
+
+  #status { font-size: 12.5px; color: var(--muted); margin: 4px 0 14px; line-height: 1.4; }
+  #status.error { color: var(--bad); font-weight: 600; }
+
+  .report {
+    border: 1px solid var(--line-strong); border-radius: 10px;
+    background: var(--panel); padding: 14px 14px 16px; margin-bottom: 14px;
+    display: none;
+  }
+  .report.show { display: block; }
+  .report h2 { font-size: 13px; margin: 0 0 10px; }
+  .report-row {
+    display: flex; justify-content: space-between; font-size: 12.5px;
+    padding: 6px 0; border-bottom: 1px solid var(--line); gap: 8px;
+  }
+  .report-row:last-child { border-bottom: none; }
+  .report-row .label { color: var(--muted); }
+  .report-row .value { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+  .verdict { margin-top: 10px; padding: 9px 11px; border-radius: 8px; font-size: 12.5px; font-weight: 600; line-height: 1.4; }
+  .verdict.pass { background: var(--verdict-pass-bg); color: var(--good); }
+  .verdict.fail { background: var(--verdict-fail-bg); color: var(--bad); }
+  .report-note { margin-top: 10px; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+
+  /* ---------- Export options ---------- */
+  #exportOptions { margin-bottom: 14px; }
+  .option-group-label {
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+    color: var(--muted); margin-bottom: 8px;
+  }
+  .quality-option {
+    display: flex; align-items: flex-start; gap: 9px;
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 9px 10px; margin-bottom: 7px; cursor: pointer;
+  }
+  .quality-option:hover { border-color: var(--line-strong); background: var(--option-hover-bg); }
+  .quality-option input[type=radio] { margin-top: 2px; accent-color: var(--ink); flex-shrink: 0; outline: none; }
+  .quality-option input[type=radio]:focus,
+  .quality-option input[type=radio]:focus-visible { outline: none; box-shadow: none; }
+  .quality-option:focus-within { outline: none; box-shadow: none; }
+  .quality-option-text { font-size: 13px; }
+  .quality-option-text strong { display: block; font-size: 13px; }
+  .quality-option-text span { display: block; font-size: 12px; color: var(--muted); margin-top: 1px; line-height: 1.35; }
+  .quality-option:has(input:checked) { background: var(--option-selected-bg); }
+
+  /* ---------- Right panel: dropzone or page canvas ---------- */
+  .canvas-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 24px 80px;
+    position: relative;
+  }
+  .canvas-panel.drag-over::after {
+    content: '';
+    position: absolute; inset: 8px;
+    border: 2px dashed var(--accent);
+    border-radius: 14px;
+    background: rgba(37, 84, 199, 0.04);
+    pointer-events: none;
+  }
+
+  #emptyState {
+    height: 100%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #dropzone {
+    border: 1.5px dashed var(--dropzone-border); border-radius: 12px;
+    padding: 40px 56px;
+    text-align: center;
+    background: var(--panel);
+    cursor: pointer;
+    max-width: 360px;
+  }
+  #dropzone:hover { border-color: var(--accent); background: var(--dropzone-hover-bg); }
+  #dropzone .dz-title { font-size: 15px; font-weight: 700; color: var(--ink); }
+  #dropzone .dz-sub { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+
+  .page-wrap {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    margin: 0 auto 22px; overflow: hidden; max-width: 760px;
+  }
+  .page-label { font-size: 12.5px; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  .canvas-stack { position: relative; line-height: 0; }
+  .canvas-stack canvas { display: block; max-width: 100%; }
+  .canvas-stack canvas.overlay { position: absolute; top: 0; left: 0; cursor: crosshair; }
+  .canvas-stack canvas.overlay.locked { cursor: default; pointer-events: none; }
+  .hint { font-size: 12.5px; color: var(--muted); padding: 6px 12px 14px; margin: 0; }
+
+  footer {
+    flex-shrink: 0;
+    background: var(--panel); border-top: 1px solid var(--line);
+    padding: 8px 24px; font-size: 11.5px; color: var(--muted);
+    display: flex; justify-content: space-between;
+  }
+
+  /* ---------- Sidebar drawer (narrow viewports) ---------- */
+  .mobile-topbar { display: none; }
+  .sidebar-toggle {
+    width: 44px; height: 44px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--line-strong); background: var(--panel); color: var(--ink);
+    cursor: pointer;
+  }
+  .sidebar-toggle svg { width: 24px; height: 24px; }
+  .sidebar-toggle .icon-close { display: none; }
+  .sidebar-toggle[aria-expanded="true"] .icon-menu { display: none; }
+  .sidebar-toggle[aria-expanded="true"] .icon-close { display: block; }
+
+  .sidebar-backdrop { display: none; }
+
+  @media (max-width: 860px) {
+    .mobile-topbar {
+      display: flex; align-items: center;
+      position: fixed; top: 0; left: 0; right: 0; height: 56px;
+      padding: 0 14px;
+      background: var(--panel); border-bottom: 1px solid var(--line);
+      z-index: 30;
+    }
+    .canvas-panel { padding-top: 76px; }
+
+    .sidebar {
+      position: fixed; top: 56px; left: 0; bottom: 0;
+      width: min(360px, 86vw);
+      z-index: 25;
+      transform: translateX(-100%);
+      transition: transform 0.22s ease;
+      box-shadow: 2px 0 18px rgba(0, 0, 0, 0.15);
+    }
+    .layout.sidebar-open .sidebar { transform: translateX(0); }
+
+    .sidebar-backdrop {
+      display: block;
+      position: fixed; inset: 0;
+      background: rgba(20, 20, 18, 0.32);
+      z-index: 22;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease;
+    }
+    .layout.sidebar-open .sidebar-backdrop {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="mobile-topbar">
+  <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Toggle menu" aria-expanded="false" aria-controls="sidebarPanel">
+    <svg class="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" aria-hidden="true">
+      <line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/>
+    </svg>
+    <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" aria-hidden="true">
+      <line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/>
+    </svg>
+  </button>
+</div>
+<div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+<div class="layout">
+
+  <div class="sidebar" id="sidebarPanel">
+    <div class="sidebar-header">
+      <div class="sidebar-header-top">
+        <h1>PDF Redactor</h1>
+        <!-- Hidden per request; remove style="display:none" on the line below to restore -->
+        <button id="themeToggle" type="button" aria-label="Toggle dark mode" title="Toggle dark mode" style="display:none">
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.5"/>
+            <line x1="12" y1="1.5" x2="12" y2="4"/>
+            <line x1="12" y1="20" x2="12" y2="22.5"/>
+            <line x1="1.5" y1="12" x2="4" y2="12"/>
+            <line x1="20" y1="12" x2="22.5" y2="12"/>
+            <line x1="4.6" y1="4.6" x2="6.3" y2="6.3"/>
+            <line x1="17.7" y1="17.7" x2="19.4" y2="19.4"/>
+            <line x1="4.6" y1="19.4" x2="6.3" y2="17.7"/>
+            <line x1="17.7" y1="6.3" x2="19.4" y2="4.6"/>
+          </svg>
+        </button>
+      </div>
+      <p>Draw boxes, apply the redaction, then export.<br>
+		  Click inside a box to delete it.
+      </p>
+      <div class="github-link">
+        <a href="https://github.com/vbookshelf/Offline-PDF-Redactor" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+
+    <input type="file" id="fileInput" accept="application/pdf">
+
+    <div id="pageJumpRow">
+      <input type="number" id="pageJumpInput" min="1" placeholder="Go to page" disabled>
+    </div>
+
+    <!-- Hidden per request; remove style="display:none" on the line below to restore -->
+    <div id="undoRow" style="display:none">
+      <button id="undoBtn" disabled>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
+        </svg>
+        <span>Undo</span>
+      </button>
+    </div>
+
+    <div class="step-card" id="stepCard1">
+     <!--
+      <span class="step-num">1</span><h3>Redact</h3>
+	  
+      <p>Draw boxes over sensitive content on the right, then permanently flatten them into the page pixels.</p>
+      -->
+      <button id="redactBtn" class="danger-step" disabled>Apply redactions</button>
+    </div>
+
+    <div class="step-card" id="stepCard2">
+	<!--
+      <span class="step-num">2</span><h3>Export</h3>
+	  
+      <p>Save the redacted pages as a new PDF, then independently verify no text survived.</p>
+      -->
+      <div id="exportOptions">
+        <div class="option-group-label">Export quality</div>
+
+        <label class="quality-option">
+          <input type="radio" name="exportQuality" value="best">
+          <span class="quality-option-text">
+            <strong>Best quality</strong>
+            <span>Largest file, sharpest text and images</span>
+          </span>
+        </label>
+
+        <label class="quality-option">
+          <input type="radio" name="exportQuality" value="balanced" checked>
+          <span class="quality-option-text">
+            <strong>Balanced</strong>
+            <span>Good readability, moderate file size</span>
+          </span>
+        </label>
+
+        <label class="quality-option">
+          <input type="radio" name="exportQuality" value="small">
+          <span class="quality-option-text">
+            <strong>Small</strong>
+            <span>Smallest file size, quality can vary</span>
+          </span>
+        </label>
+      </div>
+
+      <button id="exportBtn" class="primary" disabled>Export redacted PDF</button>
+    </div>
+
+    <div id="status"></div>
+
+    <div id="exportReport" class="report">
+      <h2>Step 2 result</h2>
+      <div class="report-row">
+        <span class="label">Extractable text in exported PDF</span>
+        <span class="value" id="eFinal">—</span>
+      </div>
+      <div class="verdict" id="eVerdict"></div>
+      <div class="report-note">
+        Re-opens the file that was just downloaded and tries to extract text from it, the same
+        way copy/paste or Ctrl+F search would. Not the app vouching for itself — an independent
+        re-read of the actual output file.
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-panel" id="canvasPanel">
+    <div id="emptyState">
+      <div id="dropzone">
+        <div class="dz-title">Select or drag &amp; drop a PDF</div>
+		<!--
+        <div class="dz-sub">Supports PDF · nothing is uploaded anywhere</div>
+	     -->
+      </div>
+    </div>
+    <div id="pages"></div>
+  </div>
+
+</div>
+
+<script>
+window.addEventListener('error', (e) => {
+  setStatus('Script error: ' + e.message, true);
+});
+
+// ---------- Dark mode toggle ----------
+// Dims the surrounding chrome (sidebar, backgrounds, borders) only.
+// Rendered PDF page canvases are untouched by this -- see the comment
+// on the [data-theme="dark"] CSS variables above for why.
+const THEME_STORAGE_KEY = 'pdfRedactorTheme';
+const themeToggle = document.getElementById('themeToggle');
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  themeToggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+}
+
+function getInitialTheme() {
+  const saved = localStorage.getItem(THEME_STORAGE_KEY);
+  if (saved === 'dark' || saved === 'light') return saved;
+  // Default to dark now that the toggle button is hidden.
+  return 'dark';
+}
+
+applyTheme(getInitialTheme());
+
+themeToggle.addEventListener('click', () => {
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  try { localStorage.setItem(THEME_STORAGE_KEY, next); } catch (e) { /* storage unavailable; theme just won't persist */ }
+});
+
+// ---------- Sidebar drawer (narrow viewports) ----------
+const layoutEl = document.querySelector('.layout');
+const sidebarToggle = document.getElementById('sidebarToggle');
+const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+
+function setSidebarOpen(open) {
+  layoutEl.classList.toggle('sidebar-open', open);
+  sidebarToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+sidebarToggle.addEventListener('click', () => {
+  setSidebarOpen(!layoutEl.classList.contains('sidebar-open'));
+});
+sidebarBackdrop.addEventListener('click', () => setSidebarOpen(false));
+
+// If the window is resized back past the breakpoint, drop the drawer state
+// so the sidebar doesn't stay hidden once it's no longer collapsible.
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 860) setSidebarOpen(false);
+});
+
+const fileInput = document.getElementById('fileInput');
+const canvasPanel = document.getElementById('canvasPanel');
+const emptyState = document.getElementById('emptyState');
+const dropzone = document.getElementById('dropzone');
+const pagesDiv = document.getElementById('pages');
+const redactBtn = document.getElementById('redactBtn');
+const exportBtn = document.getElementById('exportBtn');
+const undoBtn = document.getElementById('undoBtn');
+const pageJumpInput = document.getElementById('pageJumpInput');
+const statusEl = document.getElementById('status');
+
+const stepCard1 = document.getElementById('stepCard1');
+
+const exportReport = document.getElementById('exportReport');
+const eFinal = document.getElementById('eFinal');
+const eVerdict = document.getElementById('eVerdict');
+const stepCard2 = document.getElementById('stepCard2');
+
+function setStatus(msg, isError) {
+  statusEl.textContent = msg;
+  statusEl.classList.toggle('error', !!isError);
+}
+
+// pageData[i] = { canvas, overlay, octx, boxes, scale, width, height, redacted }
+let pageData = [];
+// boxHistory tracks the sequence of page indices where boxes were added
+let boxHistory = [];
+let isRedacted = false;
+let pdfIsLoaded = false;
+// Kept so export can re-render pages from the original PDF at a higher
+// resolution than the on-screen canvases use, for crisper print/zoom output.
+let loadedPdfDoc = null;
+// On-screen canvases render at this scale for performance. Export re-renders
+// at a scale chosen from EXPORT_QUALITY_PRESETS instead, which is what
+// actually determines output sharpness and file size.
+const SCREEN_SCALE = 1.5;
+const EXPORT_QUALITY_PRESETS = {
+  best:     { scale: 2.5, jpegQuality: 0.92 },
+  balanced: { scale: 1.8, jpegQuality: 0.85 },
+  small:    { scale: 1.3, jpegQuality: 0.7 }
+};
+
+// Reads the export options UI and returns the resolved {scale, jpegQuality}
+// for the currently selected radio.
+function getExportOptions() {
+  const selected = document.querySelector('input[name="exportQuality"]:checked');
+  const presetKey = selected ? selected.value : 'balanced';
+  const preset = EXPORT_QUALITY_PRESETS[presetKey] || EXPORT_QUALITY_PRESETS.balanced;
+  return { scale: preset.scale, jpegQuality: preset.jpegQuality };
+}
+
+// ---------- File selection: click area + drag & drop ----------
+
+dropzone.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) handleIncomingFile(file);
+});
+
+['dragenter', 'dragover'].forEach(evt => {
+  canvasPanel.addEventListener(evt, (e) => {
+    if (pdfIsLoaded) return;
+    e.preventDefault();
+    canvasPanel.classList.add('drag-over');
+  });
+});
+
+['dragleave', 'drop'].forEach(evt => {
+  canvasPanel.addEventListener(evt, (e) => {
+    if (pdfIsLoaded) return;
+    e.preventDefault();
+    canvasPanel.classList.remove('drag-over');
+  });
+});
+
+canvasPanel.addEventListener('drop', (e) => {
+  if (pdfIsLoaded) return;
+  const file = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (file) handleIncomingFile(file);
+});
+
+function handleIncomingFile(file) {
+  if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+    setStatus('That file does not look like a PDF (' + (file.type || 'unknown type') + '). Please choose a .pdf file.', true);
+    return;
+  }
+  setSidebarOpen(false);
+  loadPdf(file).catch(err => setStatus('Failed to load PDF: ' + err.message, true));
+}
+
+async function loadPdf(file) {
+  if (typeof pdfjsLib === 'undefined') {
+    setStatus('PDF.js library failed to load. Make sure the vendor/ folder is present alongside this file.', true);
+    return;
+  }
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "vendor/pdf.worker.min.js";
+
+  setStatus('Loading PDF...');
+  emptyState.style.display = 'none';
+  exportReport.classList.remove('show');
+  stepCard1.classList.remove('done');
+  stepCard2.classList.remove('done');
+  pagesDiv.innerHTML = '';
+  pageData = [];
+  boxHistory = [];
+  isRedacted = false;
+  if (loadedPdfDoc) {
+    try { loadedPdfDoc.destroy(); } catch (e) { /* ignore */ }
+  }
+  loadedPdfDoc = null;
+  redactBtn.disabled = true;
+  exportBtn.disabled = true;
+  undoBtn.disabled = true;
+  pageJumpInput.disabled = true;
+  pageJumpInput.value = '';
+
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  loadedPdfDoc = pdf;
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const scale = SCREEN_SCALE;
+    const viewport = page.getViewport({ scale });
+
+    const wrap = document.createElement('div');
+    wrap.className = 'page-wrap';
+    wrap.dataset.pageNum = i;
+
+    const label = document.createElement('div');
+    label.className = 'page-label';
+    label.textContent = 'Page ' + i + ' of ' + pdf.numPages;
+    wrap.appendChild(label);
+
+    const stack = document.createElement('div');
+    stack.className = 'canvas-stack';
+
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d');
+
+    const overlay = document.createElement('canvas');
+    overlay.className = 'overlay';
+    overlay.width = viewport.width;
+    overlay.height = viewport.height;
+    const octx = overlay.getContext('2d');
+
+    stack.appendChild(canvas);
+    stack.appendChild(overlay);
+    wrap.appendChild(stack);
+
+    pagesDiv.appendChild(wrap);
+
+    await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+    const data = {
+      canvas, overlay, octx, boxes: [],
+      scale, width: viewport.width, height: viewport.height
+    };
+    pageData.push(data);
+    attachDrawing(overlay, octx, data);
+  }
+
+  pdfIsLoaded = true;
+  canvasPanel.classList.remove('drag-over');
+  setStatus('PDF loaded and rasterized (pages converted into images).');
+  redactBtn.disabled = false;
+  pageJumpInput.disabled = false;
+  pageJumpInput.max = pdf.numPages;
+  updateUndoButtonState();
+}
+
+pageJumpInput.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  const numPages = pageData.length;
+  const target = parseInt(pageJumpInput.value, 10);
+  if (!target || target < 1 || target > numPages) {
+    setStatus('Enter a page number between 1 and ' + numPages + '.', true);
+    return;
+  }
+  const wrap = pagesDiv.querySelector('.page-wrap[data-page-num="' + target + '"]');
+  if (wrap) {
+    wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setStatus('Jumped to page ' + target + '.');
+  }
+});
+
+function attachDrawing(overlay, octx, data) {
+  let drawing = false;
+  let startX, startY;
+
+  overlay.addEventListener('mousedown', (e) => {
+    const rect = overlay.getBoundingClientRect();
+    const scaleX = overlay.width / rect.width;
+    const scaleY = overlay.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    const hitIndex = data.boxes.findIndex(b =>
+      !b.burned && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h
+    );
+    if (hitIndex !== -1) {
+      data.boxes.splice(hitIndex, 1);
+      
+      // Clean up index tracking in boxHistory when a box is manually clicked and removed
+      const pageIdx = pageData.indexOf(data);
+      const histIdx = boxHistory.lastIndexOf(pageIdx);
+      if (histIdx !== -1) {
+        boxHistory.splice(histIdx, 1);
+      }
+      
+      redrawOverlay(data);
+      updateUndoButtonState();
+      return;
+    }
+
+    drawing = true;
+    startX = x;
+    startY = y;
+  });
+
+  overlay.addEventListener('mousemove', (e) => {
+    if (!drawing) return;
+    const rect = overlay.getBoundingClientRect();
+    const scaleX = overlay.width / rect.width;
+    const scaleY = overlay.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    redrawOverlay(data);
+    octx.fillStyle = 'rgba(220, 38, 38, 0.35)';
+    octx.strokeStyle = 'rgba(220, 38, 38, 0.9)';
+    octx.lineWidth = 1.5;
+    octx.fillRect(startX, startY, x - startX, y - startY);
+    octx.strokeRect(startX, startY, x - startX, y - startY);
+  });
+
+  window.addEventListener('mouseup', (e) => {
+    if (!drawing) return;
+    drawing = false;
+    const rect = overlay.getBoundingClientRect();
+    const scaleX = overlay.width / rect.width;
+    const scaleY = overlay.height / rect.height;
+    const x = Math.min(Math.max((e.clientX - rect.left) * scaleX, 0), overlay.width);
+    const y = Math.min(Math.max((e.clientY - rect.top) * scaleY, 0), overlay.height);
+
+    let bx = Math.min(startX, x);
+    let by = Math.min(startY, y);
+    let bw = Math.abs(x - startX);
+    let bh = Math.abs(y - startY);
+
+    if (bw > 3 && bh > 3) {
+      data.boxes.push({ x: bx, y: by, w: bw, h: bh, burned: false });
+      boxHistory.push(pageData.indexOf(data));
+    }
+    redrawOverlay(data);
+    updateUndoButtonState();
+  });
+}
+
+function redrawOverlay(data) {
+  data.octx.clearRect(0, 0, data.overlay.width, data.overlay.height);
+  for (const b of data.boxes) {
+    if (b.burned) {
+      // Permanently applied: the pixels underneath are already black,
+      // so nothing more needs to be drawn for it.
+      continue;
+    }
+    data.octx.fillStyle = 'rgba(220, 38, 38, 0.35)';
+    data.octx.strokeStyle = 'rgba(220, 38, 38, 0.9)';
+    data.octx.lineWidth = 1.5;
+    data.octx.fillRect(b.x, b.y, b.w, b.h);
+    data.octx.strokeRect(b.x, b.y, b.w, b.h);
+  }
+}
+
+function updateUndoButtonState() {
+  let canUndo = false;
+  if (boxHistory.length > 0) {
+    const lastPageIndex = boxHistory[boxHistory.length - 1];
+    const targetPage = pageData[lastPageIndex];
+    const lastBox = targetPage && targetPage.boxes[targetPage.boxes.length - 1];
+    canUndo = !!(lastBox && !lastBox.burned);
+  }
+  undoBtn.disabled = !canUndo;
+}
+
+// Undo action removes the very last box created, as long as it hasn't
+// already been permanently burned into the page pixels.
+undoBtn.addEventListener('click', () => {
+  if (boxHistory.length === 0) return;
+  const lastPageIndex = boxHistory[boxHistory.length - 1];
+  const targetPage = pageData[lastPageIndex];
+  const lastBox = targetPage && targetPage.boxes[targetPage.boxes.length - 1];
+  if (!lastBox || lastBox.burned) return;
+  boxHistory.pop();
+  targetPage.boxes.pop();
+  redrawOverlay(targetPage);
+  updateUndoButtonState();
+});
+
+// STEP 1: Redact -- permanently flatten any not-yet-burned boxes into the
+// page canvas pixels. Can be clicked repeatedly: boxes already burned in
+// a previous pass are left untouched, so nothing already applied is lost
+// or redone -- only newly drawn boxes since the last click get burned.
+redactBtn.addEventListener('click', () => {
+  try {
+    if (pageData.length === 0) {
+      setStatus('No pages to redact.', true);
+      return;
+    }
+
+    let burnedCount = 0;
+    for (const data of pageData) {
+      data.ctxMain = data.canvas.getContext('2d');
+      data.ctxMain.fillStyle = '#000000';
+      for (const b of data.boxes) {
+        if (!b.burned) {
+          data.ctxMain.fillRect(b.x, b.y, b.w, b.h);
+          b.burned = true;
+          burnedCount++;
+        }
+      }
+      redrawOverlay(data);
+    }
+
+    isRedacted = true;
+    stepCard1.classList.add('done');
+    exportBtn.disabled = false;
+    updateUndoButtonState();
+
+    if (burnedCount === 0) {
+      setStatus('No new boxes to apply. Draw boxes, then apply again.');
+    } else {
+      setStatus('Applied ' + burnedCount + ' redaction' + (burnedCount > 1 ? 's' : '') + '. You can keep drawing more boxes and apply again, or export when ready.');
+    }
+  } catch (err) {
+    setStatus('Redact step failed: ' + err.message, true);
+    console.error(err);
+  }
+});
+
+// STEP 2: Export -- build a flattened PDF from the already-redacted canvases,
+// download it, then independently re-open the downloaded file and verify
+// that no text can be extracted from it.
+exportBtn.addEventListener('click', async () => {
+  try {
+    if (!isRedacted) {
+      setStatus('Apply redactions first (step 1) before exporting.', true);
+      return;
+    }
+    if (typeof window.jspdf === 'undefined') {
+      setStatus('jsPDF library failed to load. Make sure the vendor/ folder is present alongside this file.', true);
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+
+    setStatus('Preparing export...');
+    exportBtn.disabled = true;
+    exportReport.classList.remove('show');
+
+    // Safety net: burn in any boxes that were drawn but never explicitly
+    // applied, so nothing pending can be exported un-redacted.
+    let pendingBurned = 0;
+    for (const data of pageData) {
+      data.ctxMain = data.canvas.getContext('2d');
+      data.ctxMain.fillStyle = '#000000';
+      for (const b of data.boxes) {
+        if (!b.burned) {
+          data.ctxMain.fillRect(b.x, b.y, b.w, b.h);
+          b.burned = true;
+          pendingBurned++;
+        }
+      }
+      redrawOverlay(data);
+    }
+    if (pendingBurned > 0) {
+      updateUndoButtonState();
+    }
+
+    if (!loadedPdfDoc) {
+      setStatus('Original PDF reference is no longer available. Please reload the file and try again.', true);
+      exportBtn.disabled = false;
+      return;
+    }
+
+    setStatus('Rendering pages for export...');
+
+    const exportOptions = getExportOptions();
+    const exportScale = exportOptions.scale;
+
+    let doc;
+    for (let i = 0; i < pageData.length; i++) {
+      const data = pageData[i];
+      const pageNum = i + 1;
+
+      // Re-render straight from the source PDF at export resolution,
+      // rather than reusing the lower-res on-screen canvas, so printed
+      // or zoomed-in text stays crisp.
+      const pdfPage = await loadedPdfDoc.getPage(pageNum);
+      const exportViewport = pdfPage.getViewport({ scale: exportScale });
+
+      const hiResCanvas = document.createElement('canvas');
+      hiResCanvas.width = exportViewport.width;
+      hiResCanvas.height = exportViewport.height;
+      const hiResCtx = hiResCanvas.getContext('2d');
+      await pdfPage.render({ canvasContext: hiResCtx, viewport: exportViewport }).promise;
+
+      // Re-apply every redaction box at the higher resolution. Boxes are
+      // stored in on-screen canvas coordinates, so scale them up to match.
+      const scaleFactor = exportScale / data.scale;
+      hiResCtx.fillStyle = '#000000';
+      for (const b of data.boxes) {
+        hiResCtx.fillRect(b.x * scaleFactor, b.y * scaleFactor, b.w * scaleFactor, b.h * scaleFactor);
+      }
+
+      const imgData = hiResCanvas.toDataURL('image/jpeg', exportOptions.jpegQuality);
+      const pageWidthPt = data.width / data.scale;
+      const pageHeightPt = data.height / data.scale;
+
+      if (i === 0) {
+        doc = new jsPDF({
+          orientation: pageWidthPt > pageHeightPt ? 'landscape' : 'portrait',
+          unit: 'pt',
+          format: [pageWidthPt, pageHeightPt]
+        });
+      } else {
+        doc.addPage([pageWidthPt, pageHeightPt], pageWidthPt > pageHeightPt ? 'landscape' : 'portrait');
+      }
+      doc.addImage(imgData, 'JPEG', 0, 0, pageWidthPt, pageHeightPt);
+    }
+
+    const pdfBlob = doc.output('blob');
+
+    const downloadUrl = URL.createObjectURL(pdfBlob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = 'redacted.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    setStatus('Downloaded redacted.pdf. Independently verifying the exported file...');
+
+    let finalChars = 0;
+    let verifyError = null;
+    try {
+      const verifyBuffer = await pdfBlob.arrayBuffer();
+      const verifyPdf = await pdfjsLib.getDocument({ data: verifyBuffer }).promise;
+      for (let i = 1; i <= verifyPdf.numPages; i++) {
+        const vPage = await verifyPdf.getPage(i);
+        const vText = await vPage.getTextContent();
+        for (const item of vText.items) {
+          finalChars += (item.str || '').length;
+        }
+      }
+    } catch (err) {
+      verifyError = err;
+    }
+
+    eFinal.textContent = finalChars.toLocaleString() + ' characters';
+    if (verifyError) {
+      eVerdict.className = 'verdict fail';
+      eVerdict.textContent = 'Verification could not run: ' + verifyError.message;
+    } else if (finalChars === 0) {
+      eVerdict.className = 'verdict pass';
+      eVerdict.textContent = 'Pass — no extractable text remains anywhere in the exported PDF.';
+    } else {
+      eVerdict.className = 'verdict fail';
+      eVerdict.textContent = 'Fail — the exported PDF still contains extractable text. Do not share this file as-is.';
+    }
+    // Step 2 result card hidden for now -- the status line below covers pass/fail.
+    // Uncomment to bring it back: exportReport.classList.add('show');
+    stepCard2.classList.add('done');
+
+    if (verifyError) {
+      setStatus('Verification could not run: ' + verifyError.message, true);
+    } else if (finalChars === 0) {
+      setStatus('Verified: no text recoverable.');
+    } else {
+      setStatus('Verification failed — text recoverable. Do not share this file.', true);
+    }
+    exportBtn.disabled = false;
+  } catch (err) {
+    setStatus('Export step failed: ' + err.message, true);
+    console.error(err);
+    exportBtn.disabled = false;
+  }
+});
+</script>
+
+</body>
+</html>
