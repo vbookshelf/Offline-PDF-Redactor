@@ -1,7 +1,7 @@
 # Offline PDF Redactor
 A minimalist browser based PDF redactor that audits its own ouput.
 
-- Offline-first and privacy-first single file web app.
+- Offline-first and privacy-first web app.
 - Checks the exported redacted file to ensure security.
 - No installation needed. Simply download and double-click the index.html file to launch from your desktop. The app will open in your browser. 
 - Simple UI that's designed to reduce cognitive load.
