@@ -35,7 +35,7 @@ Because the output is just a picture of the redacted page, there is no underlyin
 
 Instead of just trusting that the export worked, the app takes the exact PDF blob it just created, re-opens it, and runs PDF.js's text-extraction across every page of the file.
 
-It counts every character of extractable text found. Because each page was exported as a rasterized JPEG image rather than real text/vector content, a properly redacted file should have zero extractable characters.
+It counts every character of extractable text found. Because each page was exported as a rasterized JPEG image rather than real text/vector content, there should be zero extractable characters.
 
 ## How to use ofline
 Download the project folder and place it on your desktop. Then double click the index.html file. The app will open in your browser.
@@ -52,17 +52,16 @@ Download the project folder and place it on your desktop. Then double click the 
 <br>
 
 ## Notes
-- The rasterized PDF pages that you see in the editor can look a little blurry, but the resolution of the exported file can be manually set.
 - Before starting redaction it's a good idea to do a test export to ensure that you are happy with the quality and with the file size, because the exported file size will be much larger that your original pdf.
-- Try to draw boxes with generous margin around the text to ensure that a a sliver of the original content does not remain visible.
-- Do a visual double-check of the final exported file before sharing.
+- Try to draw boxes with generous margin around the text to ensure that a sliver of the original content does not remain visible.
+- Always do a visual double-check of the final exported file before sharing.
 
 <br>
 
 ## Revision History
 
 Version 1.0<br>
-27-June-2026<br>
+26-June-2026<br>
 First release.
 
 <br>
