@@ -10,7 +10,10 @@ A minimalist browser based PDF redactor that audits its own ouput.
 
 Live demo:
 
+<br>
 
+<img src="images/image1.png" alt="App screenshot" height="700">
+<p>Simple UI</p>
 
 <br>
 
