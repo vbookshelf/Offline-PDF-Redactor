@@ -8,7 +8,8 @@ A minimalist browser based PDF redactor that audits its own ouput.
 - No Monetization/Dark Patterns - no advertisements, cookies, hidden tracking pixels, premium upgrades, or sign-up walls.
 - Free and open source.
 
-Live demo:
+Live demo:<br>
+https://pdf-redactor.woza.work/
 
 <br>
 
