@@ -1,5 +1,5 @@
 # Offline PDF Redactor
-A minimalist local browser based PDF redactor.
+A minimalist local browser based tool to redact text in PDF documents.
 
 - Offline-first and privacy-first web app.
 - Runs completely offline. All processing is done locally, in the browser.
