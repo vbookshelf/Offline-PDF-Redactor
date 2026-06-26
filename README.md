@@ -40,8 +40,13 @@ The app programmatically audits its own output right after generation. It immedi
 Simply download the project folder and place it on your desktop. Then double click the index.html file. The app will open in your browser.
 
 ## How to manually verify that redacted text has been burned out
-
-
+- Open the exported PDF in your preferred pdf viewer.
+- Click on the text, then select all content by pressing Cmd + A.
+- Copy the selected content by pressing Cmd + C.
+- Open a plain text editor.
+- Paste the content by pressing Cmd + V.
+- <b>Verify</b>: Check the pasted text content. The redacted text should not appear anywhere.
+- <b>Important</b>: If any of your redacted words or phrases show up, the redaction was not properly applied, and the document is not safe to share.
 
 <br>
 
