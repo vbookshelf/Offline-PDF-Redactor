@@ -50,6 +50,12 @@ Simply download the project folder and place it on your desktop. Then double cli
 
 <br>
 
+## Notes
+- The rasterized PDF pages can look a little blurry, but the resolution of the exported file can be manually set.
+- Before starting redaction it's a good idea to do a test export to ensure that you are happy with the quality and the file size, because the exported file size will be much larger that your original pdf.
+
+<br>
+
 ## Revision History
 
 Version 1.0<br>
