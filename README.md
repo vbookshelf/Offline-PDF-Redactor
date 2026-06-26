@@ -5,7 +5,6 @@ A minimalist local browser based PDF redactor.
 - Runs completely offline. All processing is done locally, in the browser.
 - No installation needed. Simply double-click the index.html file to launch from your desktop. The app will open in your browser. 
 - Simple UI - drop the file, draw the boxes, click export. Delete a box by clicking inside it.
-- No Monetization/Dark Patterns - no advertisements, cookies, hidden tracking pixels, premium upgrades, or sign-up walls.
 - Free and open source.
 
 Live demo:<br>
