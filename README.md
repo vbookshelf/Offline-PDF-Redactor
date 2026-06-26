@@ -33,12 +33,12 @@ Because the output is just a picture of the redacted page, there is no underlyin
 
 ## Self Verification
 
-Instead of just trusting that the export worked, the app takes the exact PDF blob it just created, re-opens it independently using pdfjsLib.getDocument() (the same library used to load PDFs in the first place), and runs PDF.js's text-extraction (getTextContent()) across every page of that freshly re-parsed file.
+Instead of just trusting that the export worked, the app takes the exact PDF blob it just created, re-opens it, and runs PDF.js's text-extraction across every page of the file.
 
-It counts every character of extractable text found (finalChars). Because each page was exported as a rasterized JPEG image rather than real text/vector content, a properly redacted file should have zero extractable characters — there's no text layer left at all, just pixels.
+It counts every character of extractable text found. Because each page was exported as a rasterized JPEG image rather than real text/vector content, a properly redacted file should have zero extractable characters.
 
 ## How to use ofline
-Simply download the project folder and place it on your desktop. Then double click the index.html file. The app will open in your browser.
+Download the project folder and place it on your desktop. Then double click the index.html file. The app will open in your browser.
 
 ## How to manually verify that redacted text has been burned out
 - Open the exported PDF in your preferred pdf viewer.
@@ -55,7 +55,7 @@ Simply download the project folder and place it on your desktop. Then double cli
 - The rasterized PDF pages that you see in the editor can look a little blurry, but the resolution of the exported file can be manually set.
 - Before starting redaction it's a good idea to do a test export to ensure that you are happy with the quality and with the file size, because the exported file size will be much larger that your original pdf.
 - Try to draw boxes with generous margin around the text to ensure that a a sliver of the original content does not remain visible.
-- A visual double-check of the final export before sharing is a good habit.
+- Do a visual double-check of the final exported file before sharing.
 
 <br>
 
