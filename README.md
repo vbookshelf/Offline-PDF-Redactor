@@ -47,7 +47,7 @@ Download the project folder and place it on your desktop. Then double click the 
 - Open a plain text editor.
 - Paste the content by pressing Cmd + V.
 - <b>Verify</b>: Check the pasted text content. The redacted text should not appear anywhere.
-- <b>Important</b>: If any of your redacted words or phrases show up, the redaction was not properly applied, and the document is not safe to share.
+- <b>Important</b>: If any of your redacted words or phrases show up, the redaction was not properly applied. The document is not safe to share.
 
 <br>
 
