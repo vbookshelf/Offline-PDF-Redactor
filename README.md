@@ -38,7 +38,7 @@ Instead of just trusting that the export worked, the app takes the exact PDF blo
 
 It counts every character of extractable text found. Because each page was exported as a rasterized JPEG image rather than real text/vector content, there should be zero extractable characters.
 
-## How to use ofline
+## How to use offline
 Download the project folder and place it on your desktop. Then double click the index.html file. The app will open in your browser.
 
 ## How to manually verify that redacted text has been burned out
